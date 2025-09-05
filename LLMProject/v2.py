@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
@@ -13,7 +14,7 @@ eval_iters = 200 # how many batches to evaluate the loss on
 n_embd = 384 # the embedding dimension , must be divisible by n_head  (384 / 6 = 64 head size)
 n_head = 6 # the number of heads we'd like
 n_layer = 6 # the number of layers we'd like
-dropout = 0.2 # dropout rate  
+dropout = 0.2 # dropout rate
 # ------------
 
 # data loading
@@ -78,6 +79,13 @@ class Head(nn.Module):
         wei = q @ k.transpose(-2,-1) * C**-0.5 # (B,T,C) @ (B,C,T) ==> (B,T,T)
         wei = wei.masked_fill(self.tril[:T,:T] == 0, float('-inf')) # (B, T, T)
         wei = F.softmax(wei, dim=-1) # (B,T,T)
+
+        if visualize:
+            plt.imshow(wei[0].detach().cpu(), cmap="hot", interpolation="nearest")
+            plt.title("Attention weights (head)")
+            plt.colorbar()
+            plt.show()
+
         # perform the weighted aggregation of the values
         v = self.value(x)
         out = wei @ v # (B,T,T) @ (B,T,C) --> (B,T,C)
@@ -199,3 +207,15 @@ for iter in range(max_iters):
 # generate from the model
 context = torch.zeros((1,1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+
+# # To visualize attention weights from the first head of the first block
+# out = model.blocks[0].sa.heads[0](x, visualize=True)
+#
+# # Visualize query, key, value vectors
+# plt.plot(q[0,0].detach().cpu().numpy(), label="Query")
+# plt.plot(k[0,0].detach().cpu().numpy(), label="Key")
+# plt.plot(v[0,0].detach().cpu().numpy(), label="Value")
+# plt.legend()
+# plt.show()
+#
+# #
